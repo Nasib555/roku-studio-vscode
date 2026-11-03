@@ -1,0 +1,248 @@
+{
+  "name": "roku-studio",
+  "displayName": "Roku Studio",
+  "description": "Find Roku devices, sideload your channel, and drive the TV from your keyboard - with live preview, crash diagnostics and an MCP server for AI agents.",
+  "version": "1.1.0",
+  "publisher": "zeealpha-com",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "rokuStudio",
+          "title": "Roku Studio",
+          "icon": "media/roku.svg"
+        }
+      ]
+    },
+    "views": {
+      "rokuStudio": [
+        {
+          "id": "rokuStudio.panel",
+          "name": "Devices",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "rokuStudio.toggleEnabled",
+        "title": "Roku: Turn Extension On/Off",
+        "icon": "$(circle-slash)"
+      },
+      {
+        "command": "rokuStudio.deploy",
+        "title": "Roku: Deploy",
+        "icon": "$(rocket)"
+      },
+      {
+        "command": "rokuStudio.scan",
+        "title": "Roku: Scan for Devices",
+        "icon": "$(search)"
+      },
+      {
+        "command": "rokuStudio.telnetConnect",
+        "title": "Roku: Connect Debug Console"
+      },
+      {
+        "command": "rokuStudio.telnetDisconnect",
+        "title": "Roku: Disconnect Debug Console"
+      },
+      {
+        "command": "rokuStudio.openWebUI",
+        "title": "Roku: Open Device Web UI"
+      },
+      {
+        "command": "rokuStudio.quickPick",
+        "title": "Roku: Quick Actions (Overlay)"
+      },
+      {
+        "command": "rokuStudio.screenshot",
+        "title": "Roku: Capture Screenshot",
+        "icon": "$(device-camera)"
+      },
+      {
+        "command": "rokuStudio.registry",
+        "title": "Roku: Inspect Registry"
+      },
+      {
+        "command": "rokuStudio.clearRegistry",
+        "title": "Roku: Delete Registry"
+      },
+      {
+        "command": "rokuStudio.history",
+        "title": "Roku: Deploy History"
+      },
+      {
+        "command": "rokuStudio.toggleWatch",
+        "title": "Roku: Toggle Watch Mode (Deploy on Save)"
+      },
+      {
+        "command": "rokuStudio.relaunch",
+        "title": "Roku: Relaunch Dev Channel"
+      },
+      {
+        "command": "rokuStudio.remote",
+        "title": "Roku: Remote Control"
+      },
+      {
+        "command": "rokuStudio.liveView",
+        "title": "Roku: Open Live Preview",
+        "icon": "$(play-circle)"
+      },
+      {
+        "command": "rokuStudio.clearScreenshots",
+        "title": "Roku: Clear Saved Screenshots"
+      },
+      {
+        "command": "rokuStudio.openScreenshotsFolder",
+        "title": "Roku: Open Screenshots Folder"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "rokuStudio.deploy",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r"
+      },
+      {
+        "command": "rokuStudio.quickPick",
+        "key": "ctrl+alt+k",
+        "mac": "cmd+alt+k"
+      },
+      {
+        "command": "rokuStudio.remote",
+        "key": "ctrl+alt+j",
+        "mac": "cmd+alt+j"
+      },
+      {
+        "command": "rokuStudio.liveView",
+        "key": "ctrl+alt+l",
+        "mac": "cmd+alt+l"
+      }
+    ],
+    "configuration": {
+      "title": "Roku Deploy",
+      "properties": {
+        "rokuStudio.appDir": {
+          "type": "string",
+          "default": "root",
+          "description": "Folder containing manifest/ and source/, relative to the workspace root."
+        },
+        "rokuStudio.bumpManifest": {
+          "type": "boolean",
+          "default": true,
+          "description": "Append a blank line to the manifest before each deploy so the package hash always changes."
+        },
+        "rokuStudio.autoReconnectConsole": {
+          "type": "boolean",
+          "default": true,
+          "description": "Reconnect the debug console automatically after a deploy."
+        },
+        "rokuStudio.scanTimeoutMs": {
+          "type": "number",
+          "default": 4000,
+          "description": "How long to listen for SSDP replies when scanning."
+        },
+        "rokuStudio.bumpBuildVersion": {
+          "type": "boolean",
+          "default": false,
+          "description": "Also increment the manifest's build_version on each deploy, so the version shown on the device identifies the build."
+        },
+        "rokuStudio.watchDebounceMs": {
+          "type": "number",
+          "default": 1200,
+          "description": "How long to wait after the last file change before an automatic redeploy (watch mode only)."
+        },
+        "rokuStudio.historyLimit": {
+          "type": "number",
+          "default": 5,
+          "description": "How many deployed packages to retain for rollback. Set to 0 to keep none (also disables multi-device deploy, which reuses the retained package)."
+        },
+        "rokuStudio.screenshotLimit": {
+          "type": "number",
+          "default": 50,
+          "description": "How many saved screenshots to keep when auto-prune is on. Oldest are deleted first."
+        },
+        "rokuStudio.screenshotAutoPrune": {
+          "type": "boolean",
+          "default": true,
+          "description": "Delete the oldest screenshots once the limit is exceeded. Turn off to keep every capture."
+        },
+        "rokuStudio.liveViewIntervalMs": {
+          "type": "number",
+          "default": 1500,
+          "description": "How often the live preview captures a new frame. Each capture takes roughly 1.2s on current hardware, so below ~1200ms gives no extra smoothness."
+        }
+      }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "rokuStudio.deploy",
+          "when": "view == rokuStudio.panel",
+          "group": "navigation@1"
+        },
+        {
+          "command": "rokuStudio.scan",
+          "when": "view == rokuStudio.panel",
+          "group": "navigation@2"
+        },
+        {
+          "command": "rokuStudio.screenshot",
+          "when": "view == rokuStudio.panel",
+          "group": "navigation@3"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.4",
+    "@types/jpeg-js": "^0.3.0",
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "jpeg-js": "^0.4.4"
+  },
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "keywords": [
+    "roku",
+    "brightscript",
+    "scenegraph",
+    "sideload",
+    "deploy",
+    "roku-studio",
+    "tv",
+    "mcp"
+  ],
+  "galleryBanner": {
+    "color": "#2E103E",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nasib555/roku-studio-vscode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Nasib555/roku-studio-vscode/issues"
+  },
+  "homepage": "https://github.com/Nasib555/roku-studio-vscode#readme"
+}

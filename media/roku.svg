@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Matches the marketplace icon: a TV on a stand with a play triangle.
+       Activity-bar icons must be a single currentColor shape so VS Code can
+       recolour them for the active, inactive and hover states. -->
+  <path fill="currentColor" d="M3 4h18a1.5 1.5 0 0 1 1.5 1.5v10A1.5 1.5 0 0 1 21 17h-7.25v2h3.75a1 1 0 0 1 0 2H6.5a1 1 0 0 1 0-2h3.75v-2H3a1.5 1.5 0 0 1-1.5-1.5v-10A1.5 1.5 0 0 1 3 4zm.5 2v9h17V6h-17z"/>
+  <path fill="currentColor" d="M10 7.8v5.4a.45.45 0 0 0 .7.38l4.2-2.7a.45.45 0 0 0 0-.76l-4.2-2.7a.45.45 0 0 0-.7.38z"/>
+</svg>
