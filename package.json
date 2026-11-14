@@ -2,7 +2,7 @@
   "name": "roku-studio",
   "displayName": "Roku Studio",
   "description": "Find Roku devices, sideload your channel, and drive the TV from your keyboard - with live preview, crash diagnostics and an MCP server for AI agents.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "zeealpha-com",
   "engines": {
     "vscode": "^1.85.0"
@@ -140,7 +140,12 @@
         "rokuStudio.bumpManifest": {
           "type": "boolean",
           "default": true,
-          "description": "Append a blank line to the manifest before each deploy so the package hash always changes."
+          "description": "Append a blank line to the manifest inside the generated package (your manifest on disk is not modified) so Roku never reports the package as identical and skips the install."
+        },
+        "rokuStudio.wipeDataOnDeploy": {
+          "type": "boolean",
+          "default": false,
+          "description": "Uninstall the dev channel before every install. WARNING: uninstalling erases the channel's registry (saved settings, playlists, theme). By default deploys replace the channel in place and keep that data."
         },
         "rokuStudio.autoReconnectConsole": {
           "type": "boolean",

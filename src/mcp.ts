@@ -99,7 +99,7 @@ const TOOLS = [
   },
   {
     name: 'rokustudio_deploy',
-    description: 'Sideload a channel: zips the app folder, uninstalls the previous dev build and installs the new one. Returns any BrightScript compile errors with their file and line. Requires the dev password.',
+    description: 'Sideload a channel: zips the app folder and replaces the dev build in place, keeping the channel registry data (set wipeData=true to uninstall first, which erases it). Returns any BrightScript compile errors with their file and line. Requires the dev password.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -108,6 +108,7 @@ const TOOLS = [
         user: { type: 'string' },
         password: { type: 'string' },
         bumpManifest: { type: 'boolean', description: 'Append a blank line to the manifest so the package always differs (default true).' },
+        wipeData: { type: 'boolean', description: 'Uninstall the dev channel first. ERASES its registry data. Default false.' },
         bumpBuildVersion: { type: 'boolean', description: 'Also increment build_version (default false).' }
       }
     }
@@ -214,6 +215,7 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<un
           password: creds.password,
           bumpManifest: args.bumpManifest !== false,
           bumpBuildVersion: args.bumpBuildVersion === true,
+          wipeData: args.wipeData === true,
           log: (l) => lines.push(l)
         });
         const problems = result.problems.length

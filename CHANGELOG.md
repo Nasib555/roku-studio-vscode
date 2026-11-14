@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.1
+
+- Fixed: deploys no longer uninstall the previous dev channel, so registry data (playlists, settings, theme) survives redeploys. Installs now use `mysubmit=Replace`.
+- New opt-in setting `rokuStudio.wipeDataOnDeploy` (default off) for the old uninstall-then-install behaviour. Uninstalling erases the registry.
+- The manifest bump is now applied only inside the generated package; the manifest on disk is no longer modified.
+- Install results are read from the device's JSON messages; HTTP 401/403, "Identical", "Install Failure" and compile failures are reported with the device's text. Credentials no longer appear in the curl command line.
+
 ## 1.0.0
 
 First public release.

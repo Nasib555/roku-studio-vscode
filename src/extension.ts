@@ -461,6 +461,7 @@ class RokuExtension implements vscode.Disposable {
             password: creds.password,
             bumpManifest: this.config().get<boolean>('bumpManifest', true),
             bumpBuildVersion: this.config().get<boolean>('bumpBuildVersion', false),
+            wipeData: this.config().get<boolean>('wipeDataOnDeploy', false),
             archiveTo: this.config().get<number>('historyLimit', 5) > 0 ? this.history.dir() : undefined,
             log: (line) => {
               this.debugConsole.log(line);
@@ -488,7 +489,7 @@ class RokuExtension implements vscode.Disposable {
               progress.report({ message: `installing on ${ip}` });
               this.debugConsole.log(`• also deploying to ${ip}`);
               try {
-                await install(result.archivedPath, ip, creds.user, creds.password, (l) => this.debugConsole.log(l));
+                await install(result.archivedPath, ip, creds.user, creds.password, (l) => this.debugConsole.log(l), this.config().get<boolean>('wipeDataOnDeploy', false));
               } catch (err) {
                 this.debugConsole.log(`✗ ${ip}: ${describeError(err)}`);
               }
@@ -779,7 +780,7 @@ class RokuExtension implements vscode.Disposable {
     try {
       await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: `Redeploying to ${creds.ip}` },
-        () => install(entry.file, creds.ip, creds.user, creds.password, (l) => this.debugConsole.log(l))
+        () => install(entry.file, creds.ip, creds.user, creds.password, (l) => this.debugConsole.log(l), this.config().get<boolean>('wipeDataOnDeploy', false))
       );
       this.setStatus(`Redeployed ${describeEntry(entry)}.`);
       if (this.config().get<boolean>('autoReconnectConsole', true)) {

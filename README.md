@@ -20,8 +20,9 @@ guest network where multicast is blocked, type the IP instead. Your choice is
 remembered.
 
 ### Deploy in one click
-Hit **Deploy to Roku** (or `Cmd+Alt+R`). The channel is packaged, the old build
-removed and the new one installed, in seconds. Your developer password is kept
+Hit **Deploy to Roku** (or `Cmd+Alt+R`). The channel is packaged and replaced in place in seconds.
+**Deploys keep the channel's saved data (registry)**: nothing is uninstalled first.
+Turn on `rokuStudio.wipeDataOnDeploy` only if you want a clean slate; uninstalling erases it. Your developer password is kept
 in the **OS keychain**, never in a script or a settings file you might commit.
 
 ### Errors land in the Problems panel
@@ -149,7 +150,8 @@ full 1920×1080 frame.
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `rokuStudio.appDir` | `root` | Folder holding the manifest |
-| `rokuStudio.bumpManifest` | `true` | Ensure each package differs from the last |
+| `rokuStudio.bumpManifest` | `true` | Ensure each package differs from the last (applied inside the zip only) |
+| `rokuStudio.wipeDataOnDeploy` | `false` | Uninstall before installing. Erases the channel's registry data |
 | `rokuStudio.bumpBuildVersion` | `false` | Also increment `build_version` each deploy |
 | `rokuStudio.autoReconnectConsole` | `true` | Reconnect the console after a deploy |
 | `rokuStudio.scanTimeoutMs` | `4000` | How long to listen for SSDP replies |
