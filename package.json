@@ -2,7 +2,7 @@
   "name": "roku-studio",
   "displayName": "Roku Studio",
   "description": "Find Roku devices, sideload your channel, and drive the TV from your keyboard - with live preview, crash diagnostics and an MCP server for AI agents.",
-  "version": "1.1.1",
+  "version": "2.0.0",
   "publisher": "zeealpha-com",
   "engines": {
     "vscode": "^1.85.0"
@@ -186,6 +186,50 @@
           "type": "number",
           "default": 1500,
           "description": "How often the live preview captures a new frame. Each capture takes roughly 1.2s on current hardware, so below ~1200ms gives no extra smoothness."
+        },
+        "rokuStudio.packageExclude": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            ".DS_Store",
+            "._*",
+            "__MACOSX/",
+            ".Spotlight-V100/",
+            ".Trashes/",
+            ".fseventsd/",
+            "* copy.*",
+            "* copy [0-9]*.*",
+            "Thumbs.db",
+            "ehthumbs.db",
+            "ehthumbs_vista.db",
+            "desktop.ini",
+            "$RECYCLE.BIN/",
+            "System Volume Information/",
+            "*.lnk",
+            "* - Copy.*",
+            "* - Copy ([0-9]*).*",
+            "*~",
+            ".directory",
+            ".Trash-*/",
+            ".nfs*",
+            ".fuse_hidden*",
+            ".idea/",
+            ".vscode/",
+            ".git/",
+            ".gitignore",
+            ".gitattributes",
+            ".svn/",
+            "*.swp",
+            "*.swo",
+            "*.tmp",
+            "*.bak",
+            "*.orig",
+            "*.rej",
+            "/out/"
+          ],
+          "markdownDescription": "Files and folders left out of the deployed package (macOS/Windows/Linux/editor junk that triggers Roku static-analysis errors). Case-insensitive globs matched at any depth; a trailing `/` matches folders only; a leading `/` anchors to the app root. Setting this replaces the default list, so copy the defaults and append your own. `manifest` is never excluded."
         }
       }
     },

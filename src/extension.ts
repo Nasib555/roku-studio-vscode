@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { DebugConsole } from './console';
 import { deploy, DeployError, install } from './deploy';
+import { DEFAULT_EXCLUDES } from './exclude';
 import { ProblemReporter } from './diagnostics';
 import { ParsedLocation } from './parse';
 import { describe, RokuDevice, scan } from './discovery';
@@ -462,12 +463,17 @@ class RokuExtension implements vscode.Disposable {
             bumpManifest: this.config().get<boolean>('bumpManifest', true),
             bumpBuildVersion: this.config().get<boolean>('bumpBuildVersion', false),
             wipeData: this.config().get<boolean>('wipeDataOnDeploy', false),
+            exclude: this.config().get<string[]>('packageExclude', DEFAULT_EXCLUDES),
             archiveTo: this.config().get<number>('historyLimit', 5) > 0 ? this.history.dir() : undefined,
             log: (line) => {
               this.debugConsole.log(line);
               progress.report({ message: line.replace(/^[•✓!]\s*/, '') });
             }
           });
+
+          if (result.warnings.some((w) => w.startsWith('file://'))) {
+            void vscode.window.showWarningMessage('Package contains file:// URLs, which Roku static analysis rejects. See the Roku console for file and line.');
+          }
 
           if (result.problems.length) {
             this.problems.setCompileProblems(appDir, result.problems);

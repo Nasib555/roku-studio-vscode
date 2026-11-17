@@ -6,6 +6,7 @@ import * as os from 'os';
 import * as path from 'path';
 import archiver = require('archiver');
 import { parseInstallErrors, ParsedLocation } from './parse';
+import { compileExcludes, DEFAULT_EXCLUDES, findFileUrls, isExcluded, isScannedTextFile, looksLikeDuplicate } from './exclude';
 
 export interface DeployOptions {
   appDir: string;
@@ -19,6 +20,8 @@ export interface DeployOptions {
    * registry (saved settings, playlists...). Off by default.
    */
   wipeData?: boolean;
+  /** Exclude patterns (see exclude.ts). Defaults to DEFAULT_EXCLUDES. */
+  exclude?: string[];
   /** When set, the built package is copied here instead of being deleted. */
   archiveTo?: string;
   log: (line: string) => void;
@@ -29,6 +32,8 @@ export interface DeployResult {
   /** Path of the retained package, when archiveTo was given. */
   archivedPath?: string;
   buildVersion?: string;
+  /** Package warnings (file:// URLs, suspicious duplicate names). */
+  warnings: string[];
 }
 
 export class DeployError extends Error {
@@ -94,59 +99,98 @@ async function readBuildVersion(appDir: string): Promise<string | undefined> {
   }
 }
 
+interface PackFile { rel: string; abs: string }
+
+/** Walk the app root, applying the exclude rules. Skipped paths are returned, not silently lost. */
+async function collectFiles(
+  appDir: string, patterns: string[]
+): Promise<{ files: PackFile[]; excluded: string[] }> {
+  const rules = compileExcludes(patterns);
+  const files: PackFile[] = [];
+  const excluded: string[] = [];
+
+  async function walk(dirAbs: string, dirRel: string): Promise<void> {
+    const entries = await fs.readdir(dirAbs, { withFileTypes: true });
+    entries.sort((x, y) => x.name.localeCompare(y.name));
+    for (const e of entries) {
+      const abs = path.join(dirAbs, e.name);
+      const rel = dirRel ? `${dirRel}/${e.name}` : e.name;
+      let isDir = e.isDirectory();
+      let isFile = e.isFile();
+      if (e.isSymbolicLink()) {
+        try { const st = await fs.stat(abs); isDir = st.isDirectory(); isFile = st.isFile(); } catch { continue; }
+      }
+      if (isExcluded(rules, rel, isDir)) { excluded.push(isDir ? `${rel}/` : rel); continue; }
+      if (isDir) { await walk(abs, rel); } else if (isFile) { files.push({ rel, abs }); }
+    }
+  }
+  await walk(appDir, '');
+  return { files, excluded };
+}
+
 /**
  * Build the channel package in-process.
  *
  * Uses archiver rather than shelling out to `zip`, which is absent on Windows
- * and not guaranteed on a minimal Linux image. The manifest bump happens only
- * inside the archive; the manifest on disk is never touched.
+ * and not guaranteed on a minimal Linux image, and does its own matching so the
+ * result is identical on every OS. The manifest bump happens only inside the
+ * archive; the manifest on disk is never touched.
  */
-async function zipApp(appDir: string, bump: boolean, log: (s: string) => void): Promise<string> {
+async function zipApp(
+  appDir: string, bump: boolean, patterns: string[], log: (s: string) => void
+): Promise<{ zipPath: string; warnings: string[] }> {
   const zipPath = path.join(os.tmpdir(), `roku-studio-${Date.now()}.zip`);
   log(`• zipping ${appDir}`);
 
-  let manifestText: string | undefined;
-  try {
-    manifestText = await fs.readFile(path.join(appDir, 'manifest'), 'utf8');
-  } catch {
-    log('! manifest not found at the app root');
+  const { files, excluded } = await collectFiles(appDir, patterns);
+  if (excluded.length) {
+    log(`• excluded ${excluded.length} junk path${excluded.length === 1 ? '' : 's'}:`);
+    for (const x of excluded) { log(`    - ${x}`); }
   }
 
-  await new Promise<void>((resolve, reject) => {
-    const output = createWriteStream(zipPath);
-    const archive = archiver('zip', { zlib: { level: 9 } });
+  const warnings: string[] = [];
+  const warn = (msg: string) => { warnings.push(msg); log(`! ${msg}`); };
 
-    output.on('close', () => resolve());
-    output.on('error', reject);
-    archive.on('error', reject);
-    // A missing optional file should not abort the whole package.
-    archive.on('warning', (err: NodeJS.ErrnoException) => {
-      if (err.code === 'ENOENT') {
-        log(`! ${err.message}`);
-      } else {
-        reject(err);
-      }
-    });
-
-    archive.pipe(output);
-    archive.glob('**/*', {
-      cwd: appDir,
-      dot: true,
-      ignore: [
-        '**/.DS_Store', '**/*.DS_Store', '__MACOSX/**', '**/__MACOSX/**',
-        '.git/**', '**/Thumbs.db', 'out/**',
-        ...(manifestText !== undefined ? ['manifest'] : [])
-      ]
-    });
-    if (manifestText !== undefined) {
-      let body = manifestText;
+  const bodies = new Map<string, string>();
+  let hasManifest = false;
+  for (const f of files) {
+    if (f.rel === 'manifest') {
+      hasManifest = true;
+      let body = await fs.readFile(f.abs, 'utf8');
       if (bump) {
         // Terminate an unterminated last line first, then add the blank line.
         if (body.length > 0 && !body.endsWith('\n')) { body += '\n'; }
         body += '\n';
         log('• manifest bumped inside the package (blank line appended)');
       }
-      archive.append(body, { name: 'manifest', date: new Date() });
+      bodies.set(f.rel, body);
+    }
+    if (looksLikeDuplicate(f.rel)) {
+      warn(`${f.rel} looks like an accidental duplicate. Kept, because it may be a real asset.`);
+    }
+    if (isScannedTextFile(f.rel)) {
+      const text = bodies.get(f.rel) ?? await fs.readFile(f.abs, 'utf8').catch(() => '');
+      for (const hit of findFileUrls(f.rel, text)) {
+        warn(`file:// URL at ${hit}. Roku static analysis rejects it; use pkg:/ instead.`);
+      }
+    }
+  }
+  if (!hasManifest) { log('! manifest not found at the app root'); }
+
+  await new Promise<void>((resolve, reject) => {
+    const output = createWriteStream(zipPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    output.on('close', () => resolve());
+    output.on('error', reject);
+    archive.on('error', reject);
+    archive.on('warning', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'ENOENT') { log(`! ${err.message}`); } else { reject(err); }
+    });
+    archive.pipe(output);
+    for (const f of files) {
+      const body = bodies.get(f.rel);
+      if (body !== undefined) { archive.append(body, { name: f.rel, date: new Date() }); }
+      else { archive.file(f.abs, { name: f.rel }); }
     }
     void archive.finalize();
   });
@@ -156,7 +200,7 @@ async function zipApp(appDir: string, bump: boolean, log: (s: string) => void): 
     throw new DeployError(`Package came out empty. Is ${appDir} the folder holding the manifest?`);
   }
   log(`• package built: ${(size / 1024).toFixed(0)} KB`);
-  return zipPath;
+  return { zipPath, warnings };
 }
 
 const HTTP_MARK = '\n__HTTP_STATUS__';
@@ -302,7 +346,7 @@ export async function deploy(opts: DeployOptions): Promise<DeployResult> {
     buildVersion = await readBuildVersion(appDir);
   }
 
-  const zipPath = await zipApp(appDir, opts.bumpManifest, log);
+  const { zipPath, warnings } = await zipApp(appDir, opts.bumpManifest, opts.exclude ?? DEFAULT_EXCLUDES, log);
   let archivedPath: string | undefined;
 
   try {
@@ -313,7 +357,7 @@ export async function deploy(opts: DeployOptions): Promise<DeployResult> {
       archivedPath = path.join(opts.archiveTo, path.basename(zipPath));
       await fs.copyFile(zipPath, archivedPath);
     }
-    return { problems, archivedPath, buildVersion };
+    return { problems, archivedPath, buildVersion, warnings };
   } finally {
     await fs.rm(zipPath, { force: true });
   }

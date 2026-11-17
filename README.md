@@ -25,6 +25,12 @@ Hit **Deploy to Roku** (or `Cmd+Alt+R`). The channel is packaged and replaced in
 Turn on `rokuStudio.wipeDataOnDeploy` only if you want a clean slate; uninstalling erases it. Your developer password is kept
 in the **OS keychain**, never in a script or a settings file you might commit.
 
+### Clean packages
+Junk such as `.idea/`, `.DS_Store`, `Thumbs.db`, Finder/Explorer "copy" duplicates and editor
+backups is left out of the zip (it triggers Roku static-analysis errors), and each skipped path
+is logged. `file://` URLs in your source are flagged with file and line; files named like
+`logo (1).png` are kept but reported. Edit the list with `rokuStudio.packageExclude`.
+
 ### Errors land in the Problems panel
 BrightScript compile errors come back from the device as HTML buried in an
 install response. Roku Studio parses them and puts each one on **the exact file
@@ -151,6 +157,7 @@ full 1920×1080 frame.
 | --- | --- | --- |
 | `rokuStudio.appDir` | `root` | Folder holding the manifest |
 | `rokuStudio.bumpManifest` | `true` | Ensure each package differs from the last (applied inside the zip only) |
+| `rokuStudio.packageExclude` | junk list | Patterns left out of the package (`.idea/`, `.DS_Store`, `Thumbs.db`, `* copy.*`...). Replaces the default when set |
 | `rokuStudio.wipeDataOnDeploy` | `false` | Uninstall before installing. Erases the channel's registry data |
 | `rokuStudio.bumpBuildVersion` | `false` | Also increment `build_version` each deploy |
 | `rokuStudio.autoReconnectConsole` | `true` | Reconnect the console after a deploy |

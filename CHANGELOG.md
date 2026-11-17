@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.0.0
+
+- Packaging no longer ships OS/IDE junk that Roku static analysis rejects (`.idea/` with `file://` URLs, Finder/Explorer "copy" duplicates, `.DS_Store`, `._*`, `Thumbs.db`, `desktop.ini`, editor backups and swap files, `.git/`, `.vscode/`, and more). Matching is done in the extension, identically on macOS, Windows and Linux.
+- New setting `rokuStudio.packageExclude` holds the exclude list (defaults cover the above). Every skipped path is listed in the Roku console.
+- Warns about `file://` URLs found in `.brs`, `.xml`, `.json` and the manifest (file and line), and about `name (N).ext` files, which are kept because they may be real assets.
+- Breaking: package contents change. Anything previously shipped that matches the exclude list is now left out.
+
 ## 1.1.1
 
 - Fixed: deploys no longer uninstall the previous dev channel, so registry data (playlists, settings, theme) survives redeploys. Installs now use `mysubmit=Replace`.
