@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.2.7
+
+Panel redesign and live preview fixes.
+
+- Panel: Roku purple accent, a purple-tinted dark background, rounder corners, a divider below the remote, and tighter spacing around the device list with more room between the Deploy button and the buttons below it.
+- Panel: Device IP, Credentials and App folder sit in a collapsible "Connection setup" section, collapsed by default (state is remembered).
+- Panel: the selected device is highlighted green, and the master-switch bar is Roku purple.
+- Panel: the Deploy button shows a rocket and names the target device (ellipsised when long). The other action buttons have icons too.
+- Panel: Console, Watch and Live buttons show an on/off dot pinned to the left edge, so labels and icons stay centred.
+- Removed the Deploy, Scan and Screenshot icons from the native view title bar; the same buttons are in the panel, and the commands remain in the Command Palette.
+- Turning the console off also closes the bottom panel when it is showing the Roku Debug output (other panels are left alone).
+- Live preview captures every 1 s by default (was 1.5 s), and no longer pauses when the dev channel is missing or restarting; it retries every interval and resumes by itself. Pause is only ever user-initiated.
+
 ## 2.0.0
 
 - Packaging no longer ships OS/IDE junk that Roku static analysis rejects (`.idea/` with `file://` URLs, Finder/Explorer "copy" duplicates, `.DS_Store`, `._*`, `Thumbs.db`, `desktop.ini`, editor backups and swap files, `.git/`, `.vscode/`, and more). Matching is done in the extension, identically on macOS, Windows and Linux.

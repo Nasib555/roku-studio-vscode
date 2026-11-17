@@ -2,7 +2,7 @@
   "name": "roku-studio",
   "displayName": "Roku Studio",
   "description": "Find Roku devices, sideload your channel, and drive the TV from your keyboard - with live preview, crash diagnostics and an MCP server for AI agents.",
-  "version": "2.0.0",
+  "version": "2.2.7",
   "publisher": "zeealpha-com",
   "engines": {
     "vscode": "^1.85.0"
@@ -184,7 +184,7 @@
         },
         "rokuStudio.liveViewIntervalMs": {
           "type": "number",
-          "default": 1500,
+          "default": 1000,
           "description": "How often the live preview captures a new frame. Each capture takes roughly 1.2s on current hardware, so below ~1200ms gives no extra smoothness."
         },
         "rokuStudio.packageExclude": {
@@ -233,25 +233,7 @@
         }
       }
     },
-    "menus": {
-      "view/title": [
-        {
-          "command": "rokuStudio.deploy",
-          "when": "view == rokuStudio.panel",
-          "group": "navigation@1"
-        },
-        {
-          "command": "rokuStudio.scan",
-          "when": "view == rokuStudio.panel",
-          "group": "navigation@2"
-        },
-        {
-          "command": "rokuStudio.screenshot",
-          "when": "view == rokuStudio.panel",
-          "group": "navigation@3"
-        }
-      ]
-    }
+    "menus": {}
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

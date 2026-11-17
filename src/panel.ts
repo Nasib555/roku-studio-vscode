@@ -15,6 +15,7 @@ export interface PanelState {
   deploying: boolean;
   consoleConnected: boolean;
   watching: boolean;
+  liveOn: boolean;
   appDir: string;
   historyCount: number;
   status: string;
@@ -83,7 +84,13 @@ export class RokuPanel implements vscode.WebviewViewProvider {
 <meta http-equiv="Content-Security-Policy"
       content="default-src 'none'; style-src 'nonce-${n}'; script-src 'nonce-${n}';">
 <style nonce="${n}">
-  :root { color-scheme: light dark; }
+  :root {
+    color-scheme: light dark;
+    /* Roku brand purple (#662D91), with a lighter tint for focus rings and text on dark. */
+    --accent: #662D91;
+    --accent-hover: #7a3ba8;
+    --accent-soft: #a56bd6;
+  }
   * { box-sizing: border-box; }
   body {
     font-family: var(--vscode-font-family);
@@ -91,7 +98,7 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     color: var(--vscode-sideBar-foreground, var(--vscode-foreground));
     /* A webview defaults to the editor background, which is darker than the
        sidebar it sits in. Match the sidebar so the panel blends with Explorer. */
-    background: var(--vscode-sideBar-background, transparent);
+    background: color-mix(in srgb, color-mix(in srgb, var(--accent) 22%, color-mix(in srgb, var(--vscode-sideBar-background, #252526) 70%, #000)) 50%, #000);
     padding: 10px 12px 24px;
     margin: 0;
   }
@@ -108,7 +115,7 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     font-family: inherit;
     font-size: 12px;
     border: none;
-    border-radius: 3px;
+    border-radius: 8px;
     padding: 6px 10px;
     cursor: pointer;
     background: var(--vscode-button-secondaryBackground, rgba(128,128,128,.2));
@@ -116,17 +123,18 @@ export class RokuPanel implements vscode.WebviewViewProvider {
   }
   button:hover:not(:disabled) { background: var(--vscode-button-secondaryHoverBackground, rgba(128,128,128,.32)); }
   button.primary {
-    background: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block;
+    background: var(--accent);
+    color: #fff;
     width: 100%;
     padding: 9px;
     font-weight: 600;
   }
-  button.primary:hover:not(:disabled) { background: var(--vscode-button-hoverBackground); }
+  button.primary:hover:not(:disabled) { background: var(--accent-hover); }
   button.active {
-    background: var(--vscode-inputOption-activeBackground, var(--vscode-button-background));
-    color: var(--vscode-inputOption-activeForeground, var(--vscode-button-foreground));
-    outline: 1px solid var(--vscode-focusBorder);
+    background: var(--accent);
+    color: #fff;
+    outline: 1px solid var(--accent-soft);
   }
   button:disabled { opacity: .45; cursor: default; }
   input {
@@ -134,40 +142,44 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     font-family: inherit;
     font-size: 12px;
     padding: 5px 7px;
-    border-radius: 3px;
+    border-radius: 8px;
     background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border, transparent);
   }
-  input:focus { outline: 1px solid var(--vscode-focusBorder); }
+  input:focus { outline: 1px solid var(--accent-soft); }
   label { display: block; font-size: 11px; opacity: .75; margin: 8px 0 3px; }
   .row { display: flex; gap: 6px; align-items: center; }
   .row > button { flex: none; }
   .row > input { flex: 1; }
+  .mt8 { margin-top: 8px; }
+  .mt14 { margin-top: 14px; }
+  [hidden] { display: none !important; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  ul { list-style: none; margin: 0; padding: 0; }
+  ul { list-style: none; margin: 12px 0 0; padding: 0; }
+  ul:empty { margin: 0; }
   li {
     display: flex;
     align-items: flex-start;
     gap: 7px;
     padding: 7px 9px;
-    border-radius: 4px;
+    border-radius: 10px;
     cursor: pointer;
     border: 1px solid transparent;
     margin-bottom: 3px;
   }
   li:hover { background: var(--vscode-list-hoverBackground); }
   li.selected {
-    background: var(--vscode-list-activeSelectionBackground);
-    color: var(--vscode-list-activeSelectionForeground);
-    border-color: var(--vscode-focusBorder);
+    background: rgba(46, 160, 67, .24);
+    color: inherit;
+    border-color: #3fb950;
   }
   li .body { flex: 1; min-width: 0; }
   .tick {
     flex: none;
     width: 14px; height: 14px;
     margin-top: 1px;
-    border-radius: 3px;
+    border-radius: 8px;
     border: 1px solid var(--vscode-checkbox-border, rgba(128,128,128,.6));
     background: var(--vscode-checkbox-background, transparent);
     font-size: 10px;
@@ -176,7 +188,7 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     cursor: pointer;
     user-select: none;
   }
-  .tick.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-color: transparent; }
+  .tick.on { background: #2ea043; color: #fff; border-color: transparent; }
   .tick.locked { opacity: .5; cursor: default; }
   .name { font-weight: 600; font-size: 12px; }
   .meta { font-size: 11px; opacity: .72; margin-top: 2px; }
@@ -191,6 +203,9 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     word-break: break-word;
   }
   .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+  /* Status dots sit at the far left of their button so label and icon stay centred. */
+  button { position: relative; }
+  button > .dot { position: absolute; left: 10px; top: 50%; margin: -3.5px 0 0; }
   .on { background: var(--vscode-testing-iconPassed, #3fb950); }
   .off { background: rgba(128,128,128,.55); }
   .hint { font-size: 10.5px; opacity: .55; margin-top: 5px; line-height: 1.45; }
@@ -200,9 +215,9 @@ export class RokuPanel implements vscode.WebviewViewProvider {
   .master {
     display: flex; align-items: center; gap: 9px;
     padding: 8px 10px; margin-bottom: 4px;
-    border-radius: 5px;
-    background: rgba(127, 127, 127, 0.11);
-    border: 1px solid var(--vscode-widget-border, rgba(128,128,128,.2));
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(102,45,145,.55), rgba(102,45,145,.28));
+    border: 1px solid rgba(165,107,214,.45);
   }
   .switch {
     flex: none; width: 34px; height: 19px; border-radius: 19px;
@@ -214,7 +229,7 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     width: 15px; height: 15px; border-radius: 50%;
     background: #fff; transition: transform .14s ease;
   }
-  .switch.on { background: var(--vscode-button-background); }
+  .switch.on { background: var(--accent); }
   .switch.on::after { transform: translateX(15px); }
   .master .label { font-size: 12px; font-weight: 600; }
   .master .sub { font-size: 10.5px; opacity: .62; margin-top: 1px; }
@@ -224,7 +239,7 @@ export class RokuPanel implements vscode.WebviewViewProvider {
   .pad {
     margin-top: 7px;
     padding: 12px 10px;
-    border-radius: 5px;
+    border-radius: 10px;
     border: 1px dashed var(--vscode-widget-border, rgba(128,128,128,.4));
     background: rgba(127, 127, 127, 0.08);
     text-align: center;
@@ -233,11 +248,11 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     user-select: none;
     transition: border-color .12s ease, background .12s ease;
   }
-  .pad:hover { border-color: var(--vscode-focusBorder); }
+  .pad:hover { border-color: var(--accent-soft); }
   .pad.live {
     border-style: solid;
-    border-color: var(--vscode-focusBorder);
-    background: var(--vscode-inputOption-activeBackground, rgba(0,122,204,.14));
+    border-color: var(--accent-soft);
+    background: rgba(102,45,145,.22);
     cursor: none;
   }
   .pad .pstate { font-size: 11.5px; font-weight: 600; }
@@ -253,14 +268,14 @@ export class RokuPanel implements vscode.WebviewViewProvider {
   .chip {
     font-family: var(--vscode-editor-font-family, monospace);
     font-size: 10.5px; line-height: 1;
-    padding: 3px 5px; border-radius: 3px;
+    padding: 3px 5px; border-radius: 8px;
     background: rgba(128,128,128,.26);
     white-space: pre;
     animation: pop .14s ease;
   }
-  .chip.nav { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+  .chip.nav { background: var(--accent); color: #fff; }
   .chip.txt { background: rgba(128,128,128,.2); }
-  .chip.recent { outline: 1px solid var(--vscode-focusBorder); }
+  .chip.recent { outline: 1px solid var(--accent-soft); }
   @keyframes pop { from { transform: scale(.82); opacity: .4; } to { transform: scale(1); opacity: 1; } }
   .pclear {
     font-size: 10px; opacity: .55; margin-top: 5px;
@@ -297,6 +312,23 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     margin: 6px auto 0;
   }
   .navrow button { padding: 7px 0; font-size: 11px; }
+
+  .tick { border-radius: 5px; }
+  .chip { border-radius: 6px; }
+  button { transition: background .12s ease; }
+  hr { border-top-color: rgba(165,107,214,.28); }
+  /* Collapsible connection setup */
+  details.setup { margin-top: 2px; border: 1px solid var(--vscode-widget-border, rgba(128,128,128,.22)); border-radius: 10px; padding: 0 10px 10px; background: rgba(127,127,127,.06); }
+  details.setup > summary {
+    list-style: none; cursor: pointer; user-select: none;
+    padding: 9px 0 7px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .07em; opacity: .85; display: flex; align-items: center; gap: 6px;
+  }
+  details.setup > summary::-webkit-details-marker { display: none; }
+  details.setup > summary::before { content: '▸'; color: var(--accent-soft); font-size: 2.5em; line-height: 0; transition: transform .12s ease; }
+  details.setup[open] > summary::before { transform: rotate(90deg); }
+  details.setup > summary:hover { opacity: 1; }
+  details.setup > label:first-of-type { margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -311,13 +343,15 @@ export class RokuPanel implements vscode.WebviewViewProvider {
   <div class="dimmed" id="main">
   <h3>Devices</h3>
   <div class="row">
-    <button id="scan">Scan network</button>
-    <button id="webui">Web UI</button>
+    <button id="scan">📡 Scan network</button>
+    <button id="webui">🌐 Web UI</button>
   </div>
   <ul id="devices"></ul>
   <div id="noDevices" class="empty"></div>
   <div class="hint" id="targetHint"></div>
 
+  <details class="setup" id="setup">
+  <summary>Connection setup</summary>
   <label for="manual">Device IP</label>
   <input id="manual" placeholder="192.168.1.50" spellcheck="false">
   <div class="hint">Scanning uses SSDP multicast. On a VPN or guest network it may find nothing, so type the IP here instead.</div>
@@ -327,7 +361,7 @@ export class RokuPanel implements vscode.WebviewViewProvider {
   <input id="user" placeholder="rokudev" spellcheck="false">
   <label for="pass">Dev password</label>
   <input id="pass" type="password" placeholder="••••">
-  <div class="row" style="margin-top:8px">
+  <div class="row mt8">
     <button id="save">Save</button>
     <button id="forget">Forget</button>
   </div>
@@ -338,25 +372,26 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     <input id="appDir" readonly>
     <button id="pick">Browse</button>
   </div>
+  </details>
 
   <hr>
   <h3>Deploy</h3>
-  <button class="primary" id="deploy">Deploy to Roku</button>
-  <div class="grid2" style="margin-top:7px">
+  <button class="primary" id="deploy">🚀 Deploy to Roku</button>
+  <div class="grid2 mt14">
     <button id="console"></button>
     <button id="watch"></button>
   </div>
-  <div class="grid2" style="margin-top:6px">
-    <button id="screenshot">Screenshot</button>
-    <button id="registry">Registry</button>
+  <div class="grid2 mt8">
+    <button id="screenshot">📸 Screenshot</button>
+    <button id="registry">🗂 Registry</button>
   </div>
-  <div class="grid2" style="margin-top:6px">
-    <button id="history">History…</button>
-    <button id="relaunch">Relaunch</button>
+  <div class="grid2 mt8">
+    <button id="history">🕘 History…</button>
+    <button id="relaunch">🔄 Relaunch</button>
   </div>
-  <div class="grid2" style="margin-top:6px">
-    <button id="live">Live preview</button>
-    <button id="clearShots">Clear shots</button>
+  <div class="grid2 mt8">
+    <button id="live">Live off</button>
+    <button id="clearShots">🧹 Clear shots</button>
   </div>
   <div class="status" id="status"></div>
 
@@ -384,13 +419,14 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     <button data-key="Fwd" title="Fast forward">▶▶</button>
     <button data-key="InstantReplay" title="Instant replay">↺</button>
   </div>
+  <hr>
   <label for="text">Send text to device</label>
   <div class="row">
     <input id="text" placeholder="type, then Enter" spellcheck="false">
     <button id="send">Send</button>
   </div>
   <div class="hint">Sent one character at a time to the focused on-screen field. Backspace and Enter have their own keys below.</div>
-  <div class="grid2" style="margin-top:6px">
+  <div class="grid2 mt8">
     <button data-key="Backspace">Backspace</button>
     <button data-key="Enter">Enter</button>
   </div>
@@ -399,7 +435,7 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     <div class="pstate" id="padState">Click to capture keyboard</div>
     <div class="phint" id="padHint">Keystrokes then go straight to the TV.</div>
     <div class="plog" id="padLog"></div>
-    <div class="pclear" id="padClear" style="display:none">clear</div>
+    <div class="pclear" id="padClear" hidden>clear</div>
   </div>
   </div>
 
@@ -415,6 +451,12 @@ export class RokuPanel implements vscode.WebviewViewProvider {
   }
 
   const post = (msg) => vscode.postMessage(msg);
+
+  // Connection setup is collapsed by default; remember the user's choice across reloads.
+  const setup = el('setup');
+  const saved = vscode.getState();
+  setup.open = !!(saved && saved.setupOpen);
+  setup.addEventListener('toggle', () => vscode.setState({ ...(vscode.getState() || {}), setupOpen: setup.open }));
 
   el('master').addEventListener('click', () => post({ type: 'setEnabled', on: !(state && state.enabled) }));
   el('scan').addEventListener('click', () => post({ type: 'scan' }));
@@ -488,12 +530,12 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     for (const c of log.querySelectorAll('.chip.recent')) { c.classList.remove('recent'); }
     log.lastElementChild.classList.add('recent');
     log.scrollTop = log.scrollHeight;
-    el('padClear').style.display = log.childElementCount ? '' : 'none';
+    el('padClear').hidden = !log.childElementCount;
   }
 
   function clearLog() {
     el('padLog').innerHTML = '';
-    el('padClear').style.display = 'none';
+    el('padClear').hidden = true;
   }
 
   function padRender() {
@@ -625,13 +667,18 @@ export class RokuPanel implements vscode.WebviewViewProvider {
 
     el('appDir').value = state.appDir || '(no folder set)';
     el('scan').disabled = state.scanning;
-    el('scan').textContent = state.scanning ? 'Scanning…' : 'Scan network';
+    el('scan').textContent = state.scanning ? '📡 Scanning…' : '📡 Scan network';
 
+    const deployName = () => {
+      const d = state.devices.find((x) => x.ip === state.selectedIp);
+      return (d && d.name) || state.selectedIp || 'Roku';
+    };
+    el('deploy').title = 'Deploy to ' + deployName();
     const noDevice = !state.selectedIp;
     el('deploy').disabled = state.deploying || noDevice;
     el('deploy').textContent = state.deploying
       ? 'Deploying…'
-      : (extras ? 'Deploy to ' + (extras + 1) + ' devices' : 'Deploy to Roku');
+      : '🚀 ' + (extras ? 'Deploy to ' + (extras + 1) + ' devices' : 'Deploy to ' + deployName());
     el('webui').disabled = noDevice;
     el('screenshot').disabled = noDevice;
     el('registry').disabled = noDevice;
@@ -641,8 +688,8 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     el('watch').disabled = noDevice;
     el('history').disabled = state.historyCount === 0;
     el('history').textContent = state.historyCount
-      ? 'History (' + state.historyCount + ')…'
-      : 'History…';
+      ? '🕘 History (' + state.historyCount + ')…'
+      : '🕘 History…';
 
     for (const btn of document.querySelectorAll('[data-key]')) {
       btn.disabled = noDevice;
@@ -661,13 +708,19 @@ export class RokuPanel implements vscode.WebviewViewProvider {
     el('console').innerHTML = '';
     const cdot = document.createElement('span');
     cdot.className = 'dot ' + (state.consoleConnected ? 'on' : 'off');
-    el('console').append(cdot, document.createTextNode(state.consoleConnected ? 'Console on' : 'Console off'));
+    el('console').append(cdot, document.createTextNode(state.consoleConnected ? '🖥 Console on' : '🖥 Console off'));
 
     el('watch').innerHTML = '';
     const wdot = document.createElement('span');
     wdot.className = 'dot ' + (state.watching ? 'on' : 'off');
     el('watch').className = state.watching ? 'active' : '';
-    el('watch').append(wdot, document.createTextNode(state.watching ? 'Watch on' : 'Watch off'));
+    el('watch').append(wdot, document.createTextNode(state.watching ? '👁 Watch on' : '👁 Watch off'));
+
+    el('live').innerHTML = '';
+    const ldot = document.createElement('span');
+    ldot.className = 'dot ' + (state.liveOn ? 'on' : 'off');
+    el('live').className = state.liveOn ? 'active' : '';
+    el('live').append(ldot, document.createTextNode(state.liveOn ? '📺 Live on' : '📺 Live off'));
 
     el('status').textContent = state.status || '';
   }

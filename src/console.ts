@@ -112,6 +112,19 @@ export class DebugConsole implements vscode.Disposable {
     this.onStateChange();
   }
 
+  /**
+   * User-initiated "console off": disconnect, and close the bottom panel if it is
+   * currently showing this output channel (never when it shows Problems, Terminal, etc.).
+   */
+  stop(): void {
+    this.disconnect();
+    const showing = vscode.window.visibleTextEditors.some((e) => {
+      const uri = e.document.uri;
+      return uri.scheme === 'output' && decodeURIComponent(uri.toString()).includes('Roku Debug');
+    });
+    if (showing) { void vscode.commands.executeCommand('workbench.action.closePanel'); }
+  }
+
   dispose(): void {
     this.disconnect();
     this.channel.dispose();

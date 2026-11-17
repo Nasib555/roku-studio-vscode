@@ -27,6 +27,8 @@ export interface LiveViewDeps {
   onStatus: (text: string) => void;
   /** Persist a captured frame; returns a label for the status line. */
   saveFrame: (image: Buffer) => Promise<string>;
+  /** Called when the preview panel opens or closes. */
+  onChange?: () => void;
 }
 
 /**
@@ -41,7 +43,7 @@ export class LiveView implements vscode.Disposable {
   private timer?: NodeJS.Timeout;
   private running = false;
   private busy = false;
-  private intervalMs = 1500;
+  private intervalMs = 1000;
   private keyboardOn = true;
   private disposed = false;
 
@@ -65,12 +67,14 @@ export class LiveView implements vscode.Disposable {
       { enableScripts: true, retainContextWhenHidden: false }
     );
     this.panel = panel;
+    this.deps.onChange?.();
     panel.webview.html = this.html();
 
     panel.webview.onDidReceiveMessage((msg) => void this.handle(msg));
     panel.onDidDispose(() => {
       this.stop();
       this.panel = undefined;
+      this.deps.onChange?.();
     });
 
     this.start();
@@ -173,7 +177,10 @@ export class LiveView implements vscode.Disposable {
     this.busy = true;
     try {
       const creds = await this.deps.creds();
-      if (!creds) { this.stop(); return; }
+      if (!creds) {
+        this.post({ type: 'error', message: 'No device or password set. Retrying…' });
+        return;
+      }
       const started = Date.now();
       const image = await ecp.screenshot(creds);
       this.lastFrame = image;
@@ -186,8 +193,8 @@ export class LiveView implements vscode.Disposable {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.post({ type: 'error', message });
-      // A stopped channel can't be captured; stop polling rather than spin.
-      if (/no screenshot/i.test(message)) { this.stop(); this.postConfig(); }
+      // No dev channel running (or the device is restarting): keep polling at the
+      // normal interval so the preview resumes by itself, with no manual Resume.
     } finally {
       this.busy = false;
     }
@@ -295,8 +302,8 @@ export class LiveView implements vscode.Disposable {
     <button id="run">Pause</button>
     <button id="refresh">Refresh</button>
     <select id="interval" title="How often to capture a new frame">
-      <option value="1000">~1 s</option>
-      <option value="1500" selected>1.5 s</option>
+      <option value="1000" selected>~1 s</option>
+      <option value="1500">1.5 s</option>
       <option value="2000">2 s</option>
       <option value="3000">3 s</option>
       <option value="5000">5 s</option>
@@ -367,7 +374,7 @@ export class LiveView implements vscode.Disposable {
     } else if (m.type === 'error') {
       el('info').textContent = m.message;
       el('info').className = 'err';
-      el('ph').textContent = m.message;
+      el('ph').textContent = m.message + ' Retrying automatically…';
     } else if (m.type === 'config') {
       keyboardOn = m.keyboardOn;
       el('run').textContent = m.running ? 'Pause' : 'Resume';

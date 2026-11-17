@@ -60,7 +60,8 @@ class RokuExtension implements vscode.Disposable {
     this.liveView = new LiveView({
       creds: () => this.creds(),
       onStatus: (text) => this.setStatus(text),
-      saveFrame: (image) => this.writeScreenshot(image)
+      saveFrame: (image) => this.writeScreenshot(image),
+      onChange: () => this.refresh()
     });
     this.debugConsole = new DebugConsole(
       () => this.refresh(),
@@ -92,7 +93,7 @@ class RokuExtension implements vscode.Disposable {
       vscode.commands.registerCommand('rokuStudio.scan', () => this.scan()),
       vscode.commands.registerCommand('rokuStudio.deploy', () => this.deploy()),
       vscode.commands.registerCommand('rokuStudio.telnetConnect', () => this.connectConsole()),
-      vscode.commands.registerCommand('rokuStudio.telnetDisconnect', () => this.debugConsole.disconnect()),
+      vscode.commands.registerCommand('rokuStudio.telnetDisconnect', () => this.debugConsole.stop()),
       vscode.commands.registerCommand('rokuStudio.openWebUI', () => this.openWebUI()),
       vscode.commands.registerCommand('rokuStudio.quickPick', () => this.quickPick()),
       vscode.commands.registerCommand('rokuStudio.screenshot', () => this.screenshot()),
@@ -130,6 +131,7 @@ class RokuExtension implements vscode.Disposable {
       deploying: this.deploying,
       consoleConnected: this.debugConsole.connected,
       watching: this.watcher.active,
+      liveOn: this.liveView.active,
       appDir: this.appDir() ?? '',
       historyCount: this.history.list().length,
       status: this.statusText
@@ -241,7 +243,7 @@ class RokuExtension implements vscode.Disposable {
         break;
       case 'deploy': await this.deploy(); break;
       case 'toggleConsole':
-        if (this.debugConsole.connected) { this.debugConsole.disconnect(); } else { this.connectConsole(); }
+        if (this.debugConsole.connected) { this.debugConsole.stop(); } else { this.connectConsole(); }
         break;
       case 'toggleWatch': this.toggleWatch(); break;
       case 'openWebUI': await this.openWebUI(); break;
@@ -652,7 +654,7 @@ class RokuExtension implements vscode.Disposable {
       this.panel.reveal();
       return;
     }
-    await this.liveView.show(this.config().get<number>('liveViewIntervalMs', 1500));
+    await this.liveView.show(this.config().get<number>('liveViewIntervalMs', 1000));
     // Capture needs a running channel, so say that up front rather than failing.
     this.setStatus('Live preview open (~1 fps). The dev channel must be running.');
   }
@@ -820,7 +822,7 @@ class RokuExtension implements vscode.Disposable {
       },
       {
         label: this.debugConsole.connected ? '$(debug-disconnect) Disconnect debug console' : '$(plug) Connect debug console',
-        run: () => (this.debugConsole.connected ? this.debugConsole.disconnect() : this.connectConsole())
+        run: () => (this.debugConsole.connected ? this.debugConsole.stop() : this.connectConsole())
       },
       { label: '$(output) Show debug output', run: () => this.debugConsole.show() },
       { label: '$(device-camera) Capture screenshot', run: () => this.screenshot() },

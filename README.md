@@ -166,7 +166,7 @@ full 1920×1080 frame.
 | `rokuStudio.historyLimit` | `5` | Retained packages for rollback |
 | `rokuStudio.screenshotLimit` | `50` | Screenshots kept when pruning |
 | `rokuStudio.screenshotAutoPrune` | `true` | Delete the oldest beyond the limit |
-| `rokuStudio.liveViewIntervalMs` | `1500` | Live preview capture interval |
+| `rokuStudio.liveViewIntervalMs` | `1000` | Live preview capture interval |
 
 ## Good to know
 
